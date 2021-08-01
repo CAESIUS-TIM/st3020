@@ -1,0 +1,290 @@
+MEM_SOURCE_15;
+// "MEM_SOURCE_15;": 结尾有";", 第一行第一列, 标准图形文件标志
+// 语法复杂, 有顶格, 有空格
+// 特殊标志的同行最好不要写注释, 如"MEM_SOURCE_15;", "PINDEF"等等，因为编译器笨笨的
+// -----------------------------------------------------------------------------
+// Project      : 第五届集创赛信诺达杯数字芯片测试     
+// Chip         : UT6264CPC-70LL  
+// File         : UT6264.mdc
+// Author       : ECUST-APEX 
+// -------------------------------------
+// Description  : 
+// - 时序增加了write-delay;
+// - incar +1 first
+// - Walk Method1/2
+// - 所有test condition的or条件都枚举了;
+// - 所有没有出现的端口都设为不定态X.
+// -------------------------------------
+// Version      : 2.4
+// -----------------------------------------------------------------------------
+
+PINDEF
+// 管道定义
+// ---- format ----
+ADDR(1..13) = I , HEX, (1,2,3,4,5,6,7,8,9,10,11,12,13) 
+DATA(1..8)  = IO, HEX, (33,34,35,36,37,38,39,40)       
+nCE1        = I , BIN, (44)
+CE2         = I , BIN, (45)
+nOE         = I , BIN, (47)
+nWE         = I , BIN, (48)
+
+// ADDR: 1-13
+// DATA: 33-40
+// EN  : 44,45,47,48
+// ALL : 1-13,33-40,44,45,47,48
+
+
+PIN_TO_CHANNEL
+// 7 jump wires + (GND,Vcc)
+// ADDR
+21 = 1
+2=13
+3..10 =8..1
+25..23 = 11..13
+// I/O
+11..13 = 33..35
+15..19 = 36..40
+// enable
+27 = 48
+26 = 45
+22 = 47
+20 = 44
+
+
+MAIN_F 
+// -----------------------------------------------------------------------------
+// [Document]
+// | INDEX | APGEN | FUNC           | HALT  |
+// | ----- | ----- | -------------- | ----- |
+// | 0-14  | 0     | I_LO           | state |
+// | 15    | 0     | Icc            | close |
+// | 16    | 0     | Icc1/Icc2 Low  | close |
+// | 17    | 0     | Icc1/Icc2 High | close |
+// | 18    | 0     | SET 0000       | state |
+// | 19    | 0     | CLR 0000       | state |
+// | 20-22 | 0     | I_SB           | state |
+// | 23-28 | 0     | I_SB1          | state |
+// | 29    | 2     | SET 0000..1FFF | close |
+// | 30    | 2     | CLR 0000..1FFF | close |
+// | 31    | 2     | Walk Method    | close |
+// | 35    | 2     | Walk Method2   | close |
+// | 32    | 2     | Read #00H      | close |
+// | 33    | 2     | Read #0FFH     | close |
+// | 34    | 0     | Close          | close |
+// -------------------------------------
+// Note:
+// - state: maintain a certain state;
+// - close: disable;
+// - SET_PERIOD of Icc/Icc1/Icc2 is special;
+// - Walk Method, Read #00H and Read #0FFH should be CLR or SET 0000..1FFF first.
+// -----------------------------------------------------------------------------
+                        {ADDR DATA nCE1 CE2 nOE nWE}
+                        {HEX  HEX  BIN  BIN BIN BIN}
+                        {IIII TIO I I I I}
+// -----------------------------------------------------------------------------
+// PARAMETER: Output Leakage Current 
+// SYMBOL   : I_LO
+// CONDITION: Vss <= V_I/O <= Vcc; nCE1 = V_IH; or CE2 = V_IL; or nOE = V_IH; 
+// or nWE = V_IL ~{1010} = {0101}
+// -------------------------------------
+START_INDEX(0){APGEN0}
+        HALT            (XXXX  XX 0 0 0 0)// state
+START_INDEX(1){APGEN0}
+        HALT            (XXXX  XX 0 0 0 1)// state
+START_INDEX(2){APGEN0}
+        HALT            (XXXX  XX 0 0 1 0)// state
+START_INDEX(3){APGEN0}
+        HALT            (XXXX  XX 0 0 1 1)// state
+START_INDEX(4){APGEN0}
+        HALT            (XXXX  XX 0 1 0 0)// state
+START_INDEX(5){APGEN0}
+        HALT            (XXXX  XX 0 1 1 0)// state
+START_INDEX(6){APGEN0}
+        HALT            (XXXX  XX 0 1 1 1)// state
+START_INDEX(7){APGEN0}
+        HALT            (XXXX  XX 1 0 0 0)// state
+START_INDEX(8){APGEN0}
+        HALT            (XXXX  XX 1 0 0 1)// state
+START_INDEX(9){APGEN0}
+        HALT            (XXXX  XX 1 0 1 0)// state
+START_INDEX(10){APGEN0}
+        HALT            (XXXX  XX 1 0 1 1)// state
+START_INDEX(11){APGEN0}
+        HALT            (XXXX  XX 1 1 0 0)// state
+START_INDEX(12){APGEN0}
+        HALT            (XXXX  XX 1 1 0 1)// state
+START_INDEX(13){APGEN0}
+        HALT            (XXXX  XX 1 1 1 0)// state
+START_INDEX(14){APGEN0}
+        HALT            (XXXX  XX 1 1 1 1)// state
+// -----------------------------------------------------------------------------
+// PARAMETER: Operating Power Supply Current
+// SYMBOL   : Icc/Icc1/Icc2
+// CONDITION: Cycle time = min/1US/500NS; I_I/O = 0mA; nCE1 = V_IL/0.2V/*; 
+//            CE2 = V_IH/Vcc-0.2V/*; other pins at any/0.2v or Vcc-0.2V/*
+// -------------------------------------
+// SET_PERIOD(70/1000/500);
+// -------------------------------------
+START_INDEX(15){APGEN0}// cycle time 
+        LDF             (0000  XX 0 1 X X)
+A15     INC             (FFFF  XX 0 1 X X)
+        JMP, A15        (0000  XX 0 1 X X)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -------------------------------------
+START_INDEX(16){APGEN0}// cycle time (other pins at 0.2V)
+        LDF             (0000  00 0 1 0 0)
+A16     INC             (FFFF  00 0 1 0 0)
+        JMP, A16        (0000  00 0 1 0 0)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -------------------------------------
+START_INDEX(17){APGEN0}// cycle time (other pins at Vcc-0.2V)
+        LDF             (0000  FF 0 1 1 1)
+A17     INC             (FFFF  FF 0 1 1 1)
+        JMP, A17        (0000  FF 0 1 1 1)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -----------------------------------------------------------------------------
+// PARAMETER: Output High Voltage
+// SYMBOL   : V_OH
+// CONDITION: I_OH = -1mA
+// -------------------------------------
+// SET_PERIOD(500)
+// SET_TIMING(X, X, 450);
+// -------------------------------------
+START_INDEX(18){APGEN0}// SET 0000
+        INC             (0000  FF 0 1 1 0)// write 
+        INC             (0000  FF 0 1 1 1)// write-delay
+        HALT            (0000 TFF 0 1 0 1)// read and state 
+// -------------------------------------
+// PARAMETER: Output Low Voltage
+// SYMBOL   : V_OL
+// CONDITION: I_OL = 4mA
+// -------------------------------------
+START_INDEX(19){APGEN0}// CLR 0000
+        INC             (0000  00 0 1 1 0)// write 
+        INC             (0000  00 0 1 1 1)// write-delay
+        HALT            (0000 T00 0 1 0 1)// read and state 
+// -----------------------------------------------------------------------------
+// PARAMETER: Standby Current(TTL)
+// SYMBOL   : I_SB
+// CONDITION: nCE1 = V_IH or CE2 = V_IL
+// -------------------------------------
+START_INDEX(20){APGEN0}
+        HALT            (XXXX  XX 1 1 X X)// state
+START_INDEX(21){APGEN0}
+        HALT            (XXXX  XX 0 0 X X)// state
+START_INDEX(22){APGEN0}
+        HALT            (XXXX  XX 1 0 X X)// state
+// -------------------------------------
+// PARAMETER: Standby Current(CMOS)
+// SYMBOL   : I_SB1
+// CONDITION: nCE1 >= Vcc-0.2V or CE2 <= 0.2V;
+//            other pins at 0.2V or Vcc-0.2V
+// -------------------------------------
+START_INDEX(23){APGEN0}
+        HALT            (0000  00 1 1 0 0)// state
+START_INDEX(24){APGEN0}
+        HALT            (0000  00 0 0 0 0)// state
+START_INDEX(25){APGEN0}
+        HALT            (0000  00 1 0 0 0)// state
+START_INDEX(26){APGEN0}
+        HALT            (FFFF  00 1 1 1 1)// state
+START_INDEX(27){APGEN0}
+        HALT            (FFFF  00 0 0 1 1)// state
+START_INDEX(28){APGEN0}
+        HALT            (FFFF  00 1 0 1 1)// state
+// -----------------------------------------------------------------------------
+// FUNCTION: DATA Write & Read
+// -------------------------------------
+START_INDEX(29){APGEN2}// SET 0000..1FFF
+        LDAR1, 0        (XXXX  XX 0 1 1 1)
+        ADDR1           (XXXX  XX 0 1 1 1)
+        LDC, 1          (XXXX  XX 0 1 1 1)
+A29     LDC, 4095       (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B29     INCAR1          (XXXX  FF 0 1 1 0)// write #0FFH
+        LOOP, B29       (XXXX  FF 0 1 1 1)// wire-delay
+        LOOP, A29       (XXXX  XX 0 1 1 1)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -------------------------------------
+START_INDEX(30){APGEN2}// CLR 0000..1FFF
+        LDAR1, 0        (XXXX  XX 0 1 1 1)
+        ADDR1           (XXXX  XX 0 1 1 1)
+        LDC, 1          (XXXX  XX 0 1 1 1)
+A30     LDC, 4095       (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B30     INCAR1          (XXXX  00 0 1 1 0)// write #00H
+        LOOP, B30       (XXXX  00 0 1 1 1)// write-delay
+        LOOP, A30       (XXXX  XX 0 1 1 1)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -------------------------------------
+START_INDEX(31){APGEN2}// Walk Method, CLR 0000..1FFF first
+        LDAR1, 0        (XXXX  XX 0 1 1 1)
+        ADDR1           (XXXX  XX 0 1 1 1)
+        LDC, 1          (XXXX  XX 0 1 1 1)
+A31     LDC, 4095       (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B31     INCAR1          (XXXX  FF 0 1 1 0)// write #0FFH
+        INC             (XXXX  FF 0 1 1 1)// write-delay
+        INC             (XXXX TFF 0 1 0 1)// read #0FFH
+        LDC, 4095       (XXXX  XX 0 1 1 1)
+C131    INCAR1          (XXXX T00 0 1 0 1)// read #00H
+        LOOP, C131      (XXXX  XX 0 1 1 1)
+        LDC, 4094       (XXXX  XX 0 1 1 1)// Note: 8192-1
+C231    INCAR1          (XXXX T00 0 1 0 1)// read #00H
+        LOOP, C231      (XXXX  XX 0 1 1 1)
+        INCAR1          (XXXX  00 0 1 1 0)// write #00H
+        INC             (XXXX  00 0 1 1 1)// write-delay
+        INC             (XXXX T00 0 1 0 1)// read #00H
+        LOOP, B31       (XXXX  XX 0 1 1 1)
+        LOOP, A31       (XXXX  XX 0 1 1 1)
+        HALT            (XXXX  XX 1 0 1 1)// close
+
+START_INDEX(35){APGEN2}// Walk Method2, SET 0000..1FFF first
+        LDAR1, 0        (XXXX  XX 0 1 1 1)
+        ADDR1           (XXXX  XX 0 1 1 1)
+        LDC, 1          (XXXX  XX 0 1 1 1)
+A35     LDC, 4095       (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B35     INCAR1          (XXXX  00 0 1 1 0)// write #00H
+        INC             (XXXX  00 0 1 1 1)// write-delay
+        INC             (XXXX T00 0 1 0 1)// read #00H
+        LDC, 4095       (XXXX  XX 0 1 1 1)
+C135    INCAR1          (XXXX TFF 0 1 0 1)// read #0FFH
+        LOOP, C135      (XXXX  XX 0 1 1 1)
+        LDC, 4094       (XXXX  XX 0 1 1 1)// Note: 8192-1
+C235    INCAR1          (XXXX TFF 0 1 0 1)// read #0FFH
+        LOOP, C235      (XXXX  XX 0 1 1 1)
+        INCAR1          (XXXX  FF 0 1 1 0)// write #0FFH
+        INC             (XXXX  FF 0 1 1 1)// write-delay
+        INC             (XXXX TFF 0 1 0 1)// read #0FFH
+        LOOP, B35       (XXXX  XX 0 1 1 1)
+        LOOP, A35       (XXXX  XX 0 1 1 1)
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -----------------------------------------------------------------------------
+// FUNCTION: Data Retention
+// -------------------------------------
+START_INDEX(32){APGEN2}// Read #00H
+        LDAR1, 0    (XXXX  XX 0 1 1 1)
+        ADDR1       (XXXX  XX 0 1 1 1)
+        LDC, 1      (XXXX  XX 0 1 1 1)
+A32     LDC, 4095   (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B32     INCAR1      (XXXX T00 0 1 0 1)// read #00H
+        LOOP, B32   (XXXX  XX 0 1 1 1)
+        LOOP, A32   (XXXX  XX 0 1 1 1)
+        INC         (XXXX  XX 1 0 1 1)
+        HALT        (XXXX  XX 1 0 1 1)// close
+// -------------------------------------
+START_INDEX(33){APGEN2}// Read #0FFH
+        LDAR1, 0    (XXXX  XX 0 1 1 1)
+        ADDR1       (XXXX  XX 0 1 1 1)
+        LDC, 1      (XXXX  XX 0 1 1 1)
+A33     LDC, 4095   (XXXX  XX 0 1 1 1)// main: 2*4096 = 1<<13 = 8K
+B33     INCAR1      (XXXX TFF 0 1 0 1)// read #0FFH
+        LOOP, B33   (XXXX  XX 0 1 1 1)
+        LOOP, A33   (XXXX  XX 0 1 1 1)
+        INC         (XXXX  XX 1 0 1 1)
+        HALT        (XXXX  XX 1 0 1 1)// close
+// -----------------------------------------------------------------------------
+// Close
+// -------------------------------------
+START_INDEX(34){APGEN0}
+        HALT            (XXXX  XX 1 0 1 1)// close
+// -----------------------------------------------------------------------------
+// "END.": 结尾有".", 最后一行第一列, 结束标志
+END.
